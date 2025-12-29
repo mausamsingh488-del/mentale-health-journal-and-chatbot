@@ -1,2 +1,119 @@
+    # mental_health_journal_chatbot.py
+# A simple mental health journal and chatbot app using Flask.
+# Run this script in VS Code with Python installed. Install dependencies: pip install flask
+# Access at http://127.0.0.1:5000/
+
+from flask import Flask, request, render_template_string, jsonify
+import json
+import os
+from datetime import datetime
+
+app = Flask(__name__)
+
+# In-memory storage for journal entries (use a database for production)
+journal_entries = []
+
+# Simple rule-based chatbot responses
+def get_chatbot_response(user_input):
+    responses = {
+        "hello": "Hello! How are you feeling today?",
+        "sad": "I'm sorry you're feeling sad. What's on your mind?",
+        "happy": "That's great! What made you happy?",
+        "anxious": "Anxiety can be tough. Try deep breathing. Want to talk about it?",
+        "stressed": "Stress is common. Maybe journal about what's causing it?",
+        "bye": "Take care! Remember, you're not alone."
+    }
+    for key in responses:
+        if key in user_input.lower():
+            return responses[key]
+    return "I'm here to listen. Tell me more."
+
+@app.route('/')
+def home():
+    return render_template_string('''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Mental Health Journal & Chatbot</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .container { max-width: 800px; margin: auto; }
+            textarea { width: 100%; height: 100px; }
+            .chat { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; }
+            .entry { margin-bottom: 10px; border-bottom: 1px solid #eee; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Mental Health Journal & Chatbot</h1>
+            
+            <h2>Journal Entry</h2>
+            <form action="/add_entry" method="post">
+                <textarea name="entry" placeholder="Write your thoughts here..."></textarea><br>
+                <button type="submit">Save Entry</button>
+            </form>
+            
+            <h2>Past Entries</h2>
+            <div id="entries">
+                {% for entry in entries %}
+                <div class="entry">
+                    <strong>{{ entry['date'] }}</strong><br>
+                    {{ entry['text'] }}
+                </div>
+                {% endfor %}
+            </div>
+            
+            <h2>Chatbot</h2>
+            <div class="chat" id="chat"></div>
+            <input type="text" id="user_input" placeholder="Type your message..." style="width: 80%;">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+        
+        <script>
+            function sendMessage() {
+                const input = document.getElementById('user_input');
+                const chat = document.getElementById('chat');
+                const message = input.value;
+                if (message.trim() === '') return;
+                
+                chat.innerHTML += '<p><strong>You:</strong> ' + message + '</p>';
+                input.value = '';
+                
+                fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    chat.innerHTML += '<p><strong>Bot:</strong> ' + data.response + '</p>';
+                    chat.scrollTop = chat.scrollHeight;
+                });
+            }
+        </script>
+    </body>
+    </html>
+    ''', entries=journal_entries)
+
+@app.route('/add_entry', methods=['POST'])
+def add_entry():
+    entry_text = request.form['entry']
+    if entry_text:
+        journal_entries.append({
+            'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'text': entry_text
+        })
+    return home()
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    data = request.get_json()
+    user_message = data['message']
+    response = get_chatbot_response(user_message)
+    return jsonify({'response': response})
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
 # Auto detect text files and perform LF normalization
 * text=auto
